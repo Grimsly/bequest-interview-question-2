@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import { getLatestData, insertData } from "./database/database";
 
 const PORT = 8080;
 const app = express();
@@ -11,11 +12,12 @@ app.use(express.json());
 // Routes
 
 app.get("/", (req, res) => {
-  res.json(database);
+  res.json(getLatestData());
 });
 
 app.post("/", (req, res) => {
   database.data = req.body.data;
+  insertData(database);
   res.sendStatus(200);
 });
 
