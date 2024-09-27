@@ -99,32 +99,44 @@ function App() {
    * Fetch data from the API for data
    */
   const getData = async () => {
-    const response = await fetch(API_URL);
-    const response_data = await response.json();
+    try {
+      const response = await fetch(API_URL);
+      const response_data = await response.json();
 
-    dispatch({
-      type: DataActionTypes.SET_DATA_OBJECT,
-      payload: response_data,
-    });
+      dispatch({
+        type: DataActionTypes.SET_DATA_OBJECT,
+        payload: response_data,
+      });
+    } catch (error) {
+      console.error(error);
+      console.log("An issue occurred when attempting to grabbing your data.");
+    }
   };
 
   /**
    * Update the data by sending it to the API to be saved
    */
   const updateData = async () => {
-    await fetch(API_URL, {
-      method: "POST",
-      body: JSON.stringify({
-        data: data.inputted_data,
-        pill: encrypt(password, iv, salt, data.inputted_data),
-      }),
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
-    });
+    try {
+      await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify({
+          data: data.inputted_data,
+          pill: encrypt(password, iv, salt, data.inputted_data),
+        }),
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json",
+        },
+      });
 
-    await getData();
+      await getData();
+    } catch (error) {
+      console.error(error);
+      console.log(
+        "An issue occurred that didn't allow us to update the data, please try again."
+      );
+    }
   };
 
   /**
