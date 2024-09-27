@@ -1,14 +1,23 @@
-import { cipher, Hex, util } from "node-forge";
+import { cipher, Hex, pkcs5, util } from "node-forge";
 
 const algorithm = "AES-CBC";
 
+/**
+ * Encrypt the data contents
+ * @param password Password of user
+ * @param iv Initialization vector
+ * @param salt Salt
+ * @param data Data string to be encrypted
+ * @returns The encrypted data in hex format
+ */
 export function encrypt(
   password: string,
   iv: string,
   salt: string,
   data: string
 ) {
-  const aes_cipher = cipher.createCipher(algorithm, password);
+  const key = pkcs5.pbkdf2(password, salt, 2, 32);
+  const aes_cipher = cipher.createCipher(algorithm, key);
 
   aes_cipher.start({ iv: iv });
   aes_cipher.update(util.createBuffer(data));
@@ -19,13 +28,23 @@ export function encrypt(
   return encrypted.toHex();
 }
 
+/**
+ * Decrypt the data contents
+ * @param password Password of user
+ * @param iv Initialization vector
+ * @param salt Salt
+ * @param data Data to be decrypted
+ * @returns The decrypted data string
+ */
 export function decrypt(
   password: string,
   iv: string,
   salt: string,
   encrypted_data: Hex
 ) {
-  const aes_decipher = cipher.createDecipher(algorithm, password);
+  const key = pkcs5.pbkdf2(password, salt, 2, 32);
+
+  const aes_decipher = cipher.createDecipher(algorithm, key);
 
   const input = util.createBuffer(util.hexToBytes(encrypted_data));
 
