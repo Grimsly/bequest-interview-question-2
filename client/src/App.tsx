@@ -1,11 +1,15 @@
 import { useEffect, useReducer, useState } from "react";
-import { encrypt } from "./util/encryption";
+import { decrypt, encrypt } from "./util/encryption";
 
 const API_URL = "http://localhost:8080";
 
 interface DataObject {
   data: string;
   pill: string;
+}
+
+interface CombinedDataObject extends DataObject {
+  inputted_data: string;
 }
 
 enum DataActionTypes {
@@ -42,16 +46,20 @@ type DataActions =
  * @param action Available actions for the reducer
  * @returns Updated data state depending on action taken
  */
-function dataReducer(state: DataObject, action: DataActions) {
+function dataReducer(state: CombinedDataObject, action: DataActions) {
   switch (action.type) {
     case DataActionTypes.SET_DATA_STRING:
       return {
         ...state,
-        data: action.payload,
+        inputted_data: action.payload,
       };
 
     case DataActionTypes.SET_DATA_OBJECT:
-      return action.payload;
+      return {
+        inputted_data: action.payload.data,
+        data: action.payload.data,
+        pill: action.payload.pill,
+      };
 
     case DataActionTypes.SET_DATA_PILL:
       return {
@@ -66,6 +74,7 @@ function dataReducer(state: DataObject, action: DataActions) {
 
 function App() {
   const [data, dispatch] = useReducer(dataReducer, {
+    inputted_data: "",
     data: "",
     pill: "",
   });
@@ -106,8 +115,8 @@ function App() {
     await fetch(API_URL, {
       method: "POST",
       body: JSON.stringify({
-        data: data.data,
-        pill: encrypt(password, iv, salt, data.data),
+        data: data.inputted_data,
+        pill: encrypt(password, iv, salt, data.inputted_data),
       }),
       headers: {
         Accept: "application/json",
@@ -122,7 +131,18 @@ function App() {
    * Verify the data
    */
   const verifyData = async () => {
-    throw new Error("Not implemented");
+    try {
+      const decrypted_data = decrypt(password, iv, salt, data.pill);
+      if (data.data === decrypted_data) {
+        console.log("Data is safe from tampering.");
+      } else {
+        throw new Error("Data has been tampered.");
+      }
+    } catch (error) {
+      if (error instanceof Error) {
+        console.error(error.message);
+      }
+    }
   };
 
   return (
@@ -144,7 +164,7 @@ function App() {
       <input
         style={{ fontSize: "30px" }}
         type="text"
-        value={data.data}
+        value={data.inputted_data}
         onChange={(e) =>
           dispatch({
             type: DataActionTypes.SET_DATA_STRING,

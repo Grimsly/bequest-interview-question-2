@@ -51,8 +51,9 @@ export function decrypt(
   aes_decipher.start({ iv: iv });
   aes_decipher.update(input);
   var result = aes_decipher.finish();
-
-  console.log(result);
-
-  return aes_decipher.output.data;
+  if (result) {
+    return aes_decipher.output.data;
+  } else {
+    throw new Error("Data has been tampered with or password is wrong");
+  }
 }
