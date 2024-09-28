@@ -1,5 +1,6 @@
 import { useEffect, useReducer, useState } from "react";
 import { decrypt, encrypt } from "./util/encryption";
+import { random } from "node-forge";
 
 const API_URL = "http://localhost:8080";
 
@@ -13,12 +14,18 @@ interface CombinedDataObject extends DataObject {
 }
 
 enum DataActionTypes {
+  SET_INPUT_DATA_STRING = "set_input_data_string",
   SET_DATA_STRING = "set_data_string",
   SET_DATA_OBJECT = "set_data_object",
   SET_DATA_PILL = "set_data_pill",
 }
 
 // Data action types
+type SetInputDataStringAction = {
+  type: DataActionTypes.SET_INPUT_DATA_STRING;
+  payload: string;
+};
+
 type SetDataStringAction = {
   type: DataActionTypes.SET_DATA_STRING;
   payload: string;
@@ -36,6 +43,7 @@ type SetDataPillAction = {
 
 /** Available actions for the data reducer */
 type DataActions =
+  | SetInputDataStringAction
   | SetDataStringAction
   | SetDataObjectAction
   | SetDataPillAction;
@@ -48,10 +56,16 @@ type DataActions =
  */
 function dataReducer(state: CombinedDataObject, action: DataActions) {
   switch (action.type) {
-    case DataActionTypes.SET_DATA_STRING:
+    case DataActionTypes.SET_INPUT_DATA_STRING:
       return {
         ...state,
         inputted_data: action.payload,
+      };
+
+    case DataActionTypes.SET_DATA_STRING:
+      return {
+        ...state,
+        data: action.payload,
       };
 
     case DataActionTypes.SET_DATA_OBJECT:
@@ -81,14 +95,12 @@ function App() {
 
   const [password, setPassword] = useState<string>("password");
   const [salt, setSalt] = useState<string>("");
-  const [iv, setIv] = useState<string>("");
 
   // If the app uses some sort of authentication service (e.g. AWS Cognito, Auth0, etc.),
   // there might be a salt or IV that could be set in the JWT of the user.
   // If using AWS, use the aws-amplify library and use Auth to retrieve the token and set the salt and IV here.
   useEffect(() => {
-    setSalt("3f02Sy5lhgS2Depn9lrS1TQhkUkoq9HD");
-    setIv("lKl5jsSHMEuaahxlRYqaz4UbY6377ORn");
+    setSalt(random.getBytesSync(32).toString());
   }, []);
 
   useEffect(() => {
@@ -122,7 +134,7 @@ function App() {
         method: "POST",
         body: JSON.stringify({
           data: data.inputted_data,
-          pill: encrypt(password, iv, salt, data.inputted_data),
+          pill: encrypt(password, salt, data.inputted_data),
         }),
         headers: {
           Accept: "application/json",
@@ -144,7 +156,7 @@ function App() {
    */
   const verifyData = async () => {
     try {
-      const decrypted_data = decrypt(password, iv, salt, data.pill);
+      const decrypted_data = decrypt(password, data.pill);
       if (data.data === decrypted_data) {
         console.log("Data is safe from tampering.");
       } else {
@@ -155,6 +167,16 @@ function App() {
         console.error(error.message);
       }
     }
+  };
+
+  /**
+   * Tamper the data
+   */
+  const tamperData = () => {
+    dispatch({
+      type: DataActionTypes.SET_DATA_STRING,
+      payload: "wrong data",
+    });
   };
 
   return (
@@ -179,7 +201,7 @@ function App() {
         value={data.inputted_data}
         onChange={(e) =>
           dispatch({
-            type: DataActionTypes.SET_DATA_STRING,
+            type: DataActionTypes.SET_INPUT_DATA_STRING,
             payload: e.target.value,
           })
         }
@@ -191,6 +213,9 @@ function App() {
         </button>
         <button style={{ fontSize: "20px" }} onClick={verifyData}>
           Verify Data
+        </button>
+        <button style={{ fontSize: "20px" }} onClick={tamperData}>
+          Tamper Data
         </button>
       </div>
     </div>
