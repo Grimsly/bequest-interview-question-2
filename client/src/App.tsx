@@ -1,6 +1,9 @@
-import { useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import { decrypt, encrypt } from "./util/encryption";
 import { random } from "node-forge";
+import { toast, ToastContainer } from "react-toastify";
+import { PasswordDialog } from "./dialogs/PasswordDialog";
+import "react-toastify/dist/ReactToastify.css";
 
 const API_URL = "http://localhost:8080";
 
@@ -93,12 +96,13 @@ function App() {
     pill: "",
   });
 
-  const [password, setPassword] = useState<string>("password");
   const [salt, setSalt] = useState<string>("");
+  const [updateDataPasswordDialogOpen, setUpdateDataPasswordDialogOpen] =
+    useState<boolean>(false);
+  const [verifyDataPasswordDialogOpen, setVerifyDataPasswordDialogOpen] =
+    useState<boolean>(false);
 
-  // If the app uses some sort of authentication service (e.g. AWS Cognito, Auth0, etc.),
-  // there might be a salt or IV that could be set in the JWT of the user.
-  // If using AWS, use the aws-amplify library and use Auth to retrieve the token and set the salt and IV here.
+  // Generate a random salt on every login or page render
   useEffect(() => {
     setSalt(random.getBytesSync(32).toString());
   }, []);
@@ -121,53 +125,76 @@ function App() {
       });
     } catch (error) {
       console.error(error);
-      console.log("An issue occurred when attempting to grabbing your data.");
+      toast.error("An issue occurred when attempting to grabbing your data.", {
+        theme: "colored",
+      });
     }
   };
 
   /**
    * Update the data by sending it to the API to be saved
+   * @param password Password to use to encrypt data
    */
-  const updateData = async () => {
-    try {
-      await fetch(API_URL, {
-        method: "POST",
-        body: JSON.stringify({
-          data: data.inputted_data,
-          pill: encrypt(password, salt, data.inputted_data),
-        }),
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-      });
+  const updateData = useCallback(
+    async (password: string) => {
+      try {
+        const response = await fetch(API_URL, {
+          method: "POST",
+          body: JSON.stringify({
+            data: data.inputted_data,
+            pill: encrypt(password, salt, data.inputted_data),
+          }),
+          headers: {
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
+        });
 
-      await getData();
-    } catch (error) {
-      console.error(error);
-      console.log(
-        "An issue occurred that didn't allow us to update the data, please try again."
-      );
-    }
-  };
+        if (response && response.status === 200) {
+          toast.success("Data has been updated.", {
+            theme: "colored",
+          });
+        }
+
+        await getData();
+      } catch (error) {
+        console.error(error);
+        toast.error(
+          "An issue occurred that didn't allow us to update the data, please try again.",
+          {
+            theme: "colored",
+          }
+        );
+      }
+    },
+    [data.inputted_data, salt]
+  );
 
   /**
    * Verify the data
+   * @param password Password to use to verify data
    */
-  const verifyData = async () => {
-    try {
-      const decrypted_data = decrypt(password, data.pill);
-      if (data.data === decrypted_data) {
-        console.log("Data is safe from tampering.");
-      } else {
-        throw new Error("Data has been tampered.");
+  const verifyData = useCallback(
+    async (password: string) => {
+      try {
+        const decrypted_data = decrypt(password, data.pill);
+        if (data.data === decrypted_data) {
+          toast.success("Data is safe from tampering.", {
+            theme: "colored",
+          });
+        } else {
+          throw new Error("Data has been tampered.");
+        }
+      } catch (error) {
+        if (error instanceof Error) {
+          toast.error(error.message, {
+            theme: "colored",
+          });
+        }
       }
-    } catch (error) {
-      if (error instanceof Error) {
-        console.error(error.message);
-      }
-    }
-  };
+    },
+    [data.data, data.pill]
+  );
 
   /**
    * Tamper the data
@@ -177,48 +204,71 @@ function App() {
       type: DataActionTypes.SET_DATA_STRING,
       payload: "wrong data",
     });
+
+    toast.info("Data has been manually tampered with.");
   };
 
   return (
-    <div
-      style={{
-        width: "100vw",
-        height: "100vh",
-        display: "flex",
-        position: "absolute",
-        padding: 0,
-        justifyContent: "center",
-        alignItems: "center",
-        flexDirection: "column",
-        gap: "20px",
-        fontSize: "30px",
-      }}
-    >
-      <div>Saved Data</div>
-      <input
-        style={{ fontSize: "30px" }}
-        type="text"
-        value={data.inputted_data}
-        onChange={(e) =>
-          dispatch({
-            type: DataActionTypes.SET_INPUT_DATA_STRING,
-            payload: e.target.value,
-          })
-        }
+    <>
+      <ToastContainer position="top-right" autoClose={5000} />
+      <PasswordDialog
+        isOpen={updateDataPasswordDialogOpen}
+        setIsOpen={setUpdateDataPasswordDialogOpen}
+        confirmText="Update"
+        onConfirmPress={updateData}
       />
+      <PasswordDialog
+        isOpen={verifyDataPasswordDialogOpen}
+        setIsOpen={setVerifyDataPasswordDialogOpen}
+        confirmText="Verify"
+        onConfirmPress={verifyData}
+      />
+      <div
+        style={{
+          width: "100vw",
+          height: "100vh",
+          display: "flex",
+          position: "absolute",
+          padding: 0,
+          justifyContent: "center",
+          alignItems: "center",
+          flexDirection: "column",
+          gap: "20px",
+          fontSize: "30px",
+        }}
+      >
+        <div>Saved Data</div>
+        <input
+          style={{ fontSize: "30px" }}
+          type="text"
+          value={data.inputted_data}
+          onChange={(e) =>
+            dispatch({
+              type: DataActionTypes.SET_INPUT_DATA_STRING,
+              payload: e.target.value,
+            })
+          }
+        />
 
-      <div style={{ display: "flex", gap: "10px" }}>
-        <button style={{ fontSize: "20px" }} onClick={updateData}>
-          Update Data
-        </button>
-        <button style={{ fontSize: "20px" }} onClick={verifyData}>
-          Verify Data
-        </button>
-        <button style={{ fontSize: "20px" }} onClick={tamperData}>
-          Tamper Data
-        </button>
+        <div style={{ display: "flex", gap: "10px" }}>
+          <button
+            style={{ fontSize: "20px" }}
+            onClick={() => setUpdateDataPasswordDialogOpen(true)}
+          >
+            Update Data
+          </button>
+          <button
+            style={{ fontSize: "20px" }}
+            onClick={() => setVerifyDataPasswordDialogOpen(true)}
+          >
+            Verify Data
+          </button>
+          <button style={{ fontSize: "20px" }} onClick={tamperData}>
+            Tamper Data
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
 
