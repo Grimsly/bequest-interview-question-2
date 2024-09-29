@@ -3,6 +3,11 @@ import { cipher, pkcs5, random, util } from "node-forge";
 const algorithm = "AES-CBC";
 
 /**
+ * The following encryption technique is heavily inspired by this article:
+ * https://medium.com/passpill-project/creating-a-client-side-encryption-system-aaa601b4ad35
+ */
+
+/**
  * Encrypt the data contents
  * @param password Password of user
  * @param salt Salt
