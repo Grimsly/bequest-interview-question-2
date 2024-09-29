@@ -226,7 +226,7 @@ function App() {
             theme: "colored",
           });
         } else {
-          throw new Error("Data has been tampered.");
+          throw new Error("Your data is doomed.");
         }
       } catch (error) {
         // Error means that there is a possibility of data tampering,
@@ -250,7 +250,7 @@ function App() {
       payload: "wrong data",
     });
 
-    toast.info("Data has been manually tampered with.");
+    toast.info("Data has been manually tampered with. Why would you do that?");
   };
 
   return (
