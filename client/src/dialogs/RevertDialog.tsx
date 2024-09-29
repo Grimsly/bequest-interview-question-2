@@ -12,7 +12,8 @@ export function RevertDialog({
   isOpen,
   setIsOpen,
   descriptionText,
-  onConfirmPress,
+  onGetPress,
+  onRevertPress,
 }: {
   /** Whether the dialog is open */
   isOpen: boolean;
@@ -20,8 +21,10 @@ export function RevertDialog({
   setIsOpen: (isOpen: boolean) => void;
   /** Text describing the nature of why there is a request for the data to be reverted */
   descriptionText: string;
-  /** Callback on confirm press */
-  onConfirmPress: () => void;
+  /** Callback on get press */
+  onGetPress: () => void;
+  /** Callback on revert press */
+  onRevertPress: () => void;
 }) {
   return (
     <Dialog
@@ -33,7 +36,8 @@ export function RevertDialog({
       <DialogTitle id="alert-dialog-title">{descriptionText}</DialogTitle>
       <DialogContent>
         <DialogContentText id="alert-dialog-description">
-          Would you like to revert your data back to a previous version?
+          Would you like to retrieve your data again or revert your data back to
+          a previous version?
         </DialogContentText>
       </DialogContent>
       <DialogActions>
@@ -47,7 +51,15 @@ export function RevertDialog({
         <Button
           onClick={() => {
             setIsOpen(false);
-            onConfirmPress();
+            onGetPress();
+          }}
+        >
+          Retrieve data
+        </Button>
+        <Button
+          onClick={() => {
+            setIsOpen(false);
+            onRevertPress();
           }}
           autoFocus
         >

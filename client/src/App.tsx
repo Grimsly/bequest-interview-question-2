@@ -112,29 +112,34 @@ function App() {
     setSalt(random.getBytesSync(32).toString());
   }, []);
 
-  useEffect(() => {
-    getData();
-  }, []);
-
   /**
    * Fetch data from the API for data
    */
-  const getData = async () => {
+  const getData = useCallback(async () => {
     try {
       const response = await fetch(API_URL);
       const response_data = await response.json();
 
-      dispatch({
-        type: DataActionTypes.SET_DATA_OBJECT,
-        payload: response_data,
-      });
+      if (response_data) {
+        toast.success("Data was successfully retrieved.", {
+          theme: "colored",
+        });
+        dispatch({
+          type: DataActionTypes.SET_DATA_OBJECT,
+          payload: response_data,
+        });
+      }
     } catch (error) {
       console.error(error);
       toast.error("An issue occurred when attempting to grabbing your data.", {
         theme: "colored",
       });
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    getData();
+  }, [getData]);
 
   /**
    * Update the data by sending it to the API to be saved
@@ -172,7 +177,7 @@ function App() {
         );
       }
     },
-    [data.inputted_data, salt]
+    [data.inputted_data, getData, salt]
   );
 
   /**
@@ -267,7 +272,8 @@ function App() {
         isOpen={revertDataDialogOpen}
         setIsOpen={setRevertDataDialogOpen}
         descriptionText={revert_dialog_text.current}
-        onConfirmPress={revertData}
+        onGetPress={getData}
+        onRevertPress={revertData}
       />
       <div
         style={{
@@ -306,6 +312,7 @@ function App() {
           <button
             style={{ fontSize: "20px" }}
             onClick={() => setVerifyDataPasswordDialogOpen(true)}
+            disabled={!data.data || !data.pill}
           >
             Verify Data
           </button>
