@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { decrypt, encrypt } from "./util/encryption";
 import { random } from "node-forge";
 import { toast, ToastContainer } from "react-toastify";
 import { PasswordDialog } from "./dialogs/PasswordDialog";
 import "react-toastify/dist/ReactToastify.css";
+import { RevertDialog } from "./dialogs/RevertDialog";
 
 const API_URL = "http://localhost:8080";
 
@@ -101,6 +102,10 @@ function App() {
     useState<boolean>(false);
   const [verifyDataPasswordDialogOpen, setVerifyDataPasswordDialogOpen] =
     useState<boolean>(false);
+  const [revertDataDialogOpen, setRevertDataDialogOpen] =
+    useState<boolean>(false);
+
+  const revert_dialog_text = useRef<string>("");
 
   // Generate a random salt on every login or page render
   useEffect(() => {
@@ -171,6 +176,39 @@ function App() {
   );
 
   /**
+   * Revert the data to a previous version
+   */
+  const revertData = useCallback(async () => {
+    try {
+      const response = await fetch(API_URL + "/revert");
+      const response_data = await response.json();
+
+      if (response.status === 404) {
+        toast.error(response_data.message, {
+          theme: "colored",
+        });
+        dispatch({
+          type: DataActionTypes.SET_DATA_OBJECT,
+          payload: response_data,
+        });
+      } else {
+        dispatch({
+          type: DataActionTypes.SET_DATA_OBJECT,
+          payload: response_data,
+        });
+        toast.success("Data has been reverted.", {
+          theme: "colored",
+        });
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("An issue occurred when attempting to revert your data.", {
+        theme: "colored",
+      });
+    }
+  }, []);
+
+  /**
    * Verify the data
    * @param password Password to use to verify data
    */
@@ -186,10 +224,12 @@ function App() {
           throw new Error("Data has been tampered.");
         }
       } catch (error) {
+        // Error means that there is a possibility of data tampering,
+        // so give the user the ability to revert their data
         if (error instanceof Error) {
-          toast.error(error.message, {
-            theme: "colored",
-          });
+          // Depending on the error message, set that as the title of the revert dialog
+          revert_dialog_text.current = error.message;
+          setRevertDataDialogOpen(true);
         }
       }
     },
@@ -222,6 +262,12 @@ function App() {
         setIsOpen={setVerifyDataPasswordDialogOpen}
         confirmText="Verify"
         onConfirmPress={verifyData}
+      />
+      <RevertDialog
+        isOpen={revertDataDialogOpen}
+        setIsOpen={setRevertDataDialogOpen}
+        descriptionText={revert_dialog_text.current}
+        onConfirmPress={revertData}
       />
       <div
         style={{
